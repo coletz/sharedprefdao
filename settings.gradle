@@ -1,0 +1,3 @@
+include ':app',
+        ':sharedprefdao-processor',
+        ':sharedprefdao-annotation'

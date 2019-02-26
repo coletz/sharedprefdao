@@ -13,3 +13,7 @@
 .externalNativeBuild
 
 \.idea/
+
+sharedprefdao-annotation/build/
+
+sharedprefdao-processor/build/

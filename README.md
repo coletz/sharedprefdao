@@ -16,8 +16,8 @@ Usage:
 
 1. Annotate an interface with `@SharedPrefDao`
 2. Add `var` for each key you want in your Dao
-3a. Set default values for your entries with `@get:DefaultValue("myDefaultValue")`
-3b. In order to set an empty string as default value, use EMPTY_STRING constant;
+3. Set default values for your entries with `@get:DefaultValue("myDefaultValue")`
+4. In order to set an empty string as default value, use EMPTY_STRING constant;
 
 ```
 @SharedPrefDao(name = AppConfig.SHARED_PREF_NAME)

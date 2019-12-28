@@ -10,7 +10,7 @@ dependencies {
     ...
 }
 ```
-Don't forget to `apply kotlin-kapt` plugin and add `maven { url "https://jitpack.io" }` to your repositories
+Don't forget to `apply plugin: 'kotlin-kapt'` and add `maven { url "https://jitpack.io" }` to your repositories
 
 Usage:
 

@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">SharedPrefDao</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="preference_type">Preference Type:</string>
+    <string name="preference_editor_title">Preference Editor</string>
+    <string name="preference_editor_key_hint">Key</string>
+    <string name="preference_editor_value_hint">Value</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+</resources>

@@ -1,3 +1,4 @@
 include ':app',
         ':sharedprefdao-processor',
         ':sharedprefdao-annotation'
+include ':sharedprefdao-editor'

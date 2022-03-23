@@ -9,3 +9,17 @@ dependencies {
 
 sourceCompatibility = "8"
 targetCompatibility = "8"
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.java
+
+                groupId = 'com.dcoletto.sharedprefdao'
+                artifactId = 'annotation'
+                version = '0.1'
+            }
+        }
+    }
+}

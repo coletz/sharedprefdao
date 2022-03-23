@@ -4,15 +4,14 @@ import com.dcoletto.dslpoet.*
 import com.dcoletto.sharedprefdao.annotation.DefaultValue
 import com.dcoletto.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
 import com.dcoletto.sharedprefdao.annotation.SharedPrefDao
-import com.google.auto.common.MoreElements
 import com.squareup.kotlinpoet.*
 import org.jetbrains.annotations.Nullable
-import java.lang.Exception
+import java.util.*
 import javax.lang.model.element.*
 import javax.lang.model.type.*
 
 class Dao(private val daoInterface: TypeElement, private val annotation: SharedPrefDao){
-    private val packageName = MoreElements.getPackage(daoInterface).qualifiedName.toString()
+    private val packageName = daoInterface.parentPackage.qualifiedName.toString()
 
     private val className = daoInterface
             .qualifiedName
@@ -27,9 +26,9 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
 
         return file(packageName, className) {
 
-            val generatorFuncName = daoInterface.simpleName.toString().decapitalize()
+            val generatorFuncName = daoInterface.simpleName.toString().replaceFirstChar { it.lowercase() }
             val generatorFuncType = daoInterface.asType().asTypeName()
-            val spName = annotation.name.takeIf { it.isNotBlank() } ?: generatorFuncName.toUpperCase().plus("_SP")
+            val spName = annotation.name.takeIf { it.isNotBlank() } ?: generatorFuncName.uppercase().plus("_SP")
 
 
             val genFromSp = genFunction(generatorFuncName, generatorFuncType) {
@@ -66,15 +65,18 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                             element.simpleName.startsWith("is") -> { "" }
                             else -> { null }
                         }?.let { methodPrefix ->
-                            val propertyName = element.simpleName.removePrefix(methodPrefix).toString().decapitalize()
+                            val propertyName = element.simpleName
+                                .removePrefix(methodPrefix)
+                                .toString()
+                                .replaceFirstChar { it.lowercase(Locale.getDefault()) }
 
                             val isNullable = element.getAnnotation(Nullable::class.java) != null
                             val defaultValueAnnotation = element.getAnnotation(DefaultValue::class.java)
                             val retType = (element as ExecutableElement).returnType
                             val propertyType = retType.asTypeName().javaToKotlinType()
                             val className = ClassName.bestGuess(propertyType.toString())
-                            val classSimpleName = className.simpleName.capitalize()
-                            val key = "${annotation.prefix}_${propertyName.toUpperCase()}_KEY"
+                            val classSimpleName = className.simpleName.replaceFirstChar { it.titlecase() }
+                            val key = "${annotation.prefix}_${propertyName.uppercase()}_KEY"
 
                             keys.add(key)
 
@@ -91,7 +93,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                 // valueOf defValueAnnotation
                                                 enumElement.enclosedElements
                                                         .filter { it.kind == ElementKind.ENUM_CONSTANT }
-                                                        .firstOrNull { it.simpleName.toString().toLowerCase() == defValAnnotation.toLowerCase() }
+                                                        .firstOrNull { it.simpleName.toString().lowercase() == defValAnnotation.lowercase() }
                                                         ?: throw Exception("String `$defValAnnotation` used as DefaultValue is not present in enum class ${enumElement.simpleName}")
                                             }
                                         }

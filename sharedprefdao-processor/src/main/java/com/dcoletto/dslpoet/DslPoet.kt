@@ -139,11 +139,9 @@ fun FileSpec.writeToFiler(filer: Filer): String {
 
     val kotlinFileObject = filer.createResource(StandardLocation.SOURCE_OUTPUT, this.packageName, "${this.name}.kt")
 
-    var filePath: String? = null
-
-    kotlinFileObject.openWriter().use {
-        this.writeTo(it)
-        filePath = kotlinFileObject.name
+    val filePath = kotlinFileObject.openWriter().use {
+        writeTo(it)
+        kotlinFileObject.name
     }
 
     return filePath ?: throw Exception("Error while creating file ${this.name}.kt")

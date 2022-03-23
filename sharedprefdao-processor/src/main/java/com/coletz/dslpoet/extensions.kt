@@ -1,4 +1,4 @@
-package com.dcoletto.dslpoet
+package com.coletz.dslpoet
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName

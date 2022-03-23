@@ -1,8 +1,8 @@
-package com.dcoletto.sharedprefdao
+package com.coletz.sharedprefdao
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.dcoletto.sharedprefdao.editor.SharedPrefFileActivity
+import com.coletz.sharedprefdao.editor.SharedPrefFileActivity
 
 class MainActivity : AppCompatActivity() {
 

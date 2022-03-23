@@ -5,8 +5,9 @@ Add to your project:
 ```
 dependencies {
     ...
-    implementation 'com.github.dcoletto.sharedprefdao:sharedprefdao-annotation:0.0.3'
-    kapt 'com.github.dcoletto.sharedprefdao:sharedprefdao-processor:0.0.3'
+    implementation 'com.github.coletz.sharedprefdao:editor:0.1.1'
+    implementation 'com.github.coletz.sharedprefdao:annotation:0.1.1'
+    kapt 'com.github.coletz.sharedprefdao:processor:0.1.1'
     ...
 }
 ```

@@ -16,9 +16,9 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.java
 
-                groupId = 'com.dcoletto.sharedprefdao'
+                groupId = lib.groupId
                 artifactId = 'annotation'
-                version = '0.1'
+                version = lib.version
             }
         }
     }

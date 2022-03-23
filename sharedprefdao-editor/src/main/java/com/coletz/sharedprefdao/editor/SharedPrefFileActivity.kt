@@ -1,4 +1,4 @@
-package com.dcoletto.sharedprefdao.editor
+package com.coletz.sharedprefdao.editor
 
 import android.content.Context
 import android.content.Intent

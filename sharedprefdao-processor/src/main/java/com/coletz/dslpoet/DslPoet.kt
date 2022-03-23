@@ -1,9 +1,7 @@
-package com.dcoletto.dslpoet
+package com.coletz.dslpoet
 
 import com.squareup.kotlinpoet.*
-import java.lang.reflect.Type
 import javax.annotation.processing.Filer
-import javax.lang.model.type.TypeMirror
 import javax.tools.StandardLocation
 
 // Create a standalone class

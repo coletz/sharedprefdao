@@ -44,9 +44,9 @@ afterEvaluate {
             release(MavenPublication) {
                 from components.release
 
-                groupId = 'com.dcoletto.sharedprefdao'
+                groupId = lib.groupId
                 artifactId = 'editor'
-                version = '0.1'
+                version = lib.version
             }
         }
     }

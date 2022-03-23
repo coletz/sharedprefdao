@@ -1,7 +1,7 @@
-package com.dcoletto.sharedprefdao.processor
+package com.coletz.sharedprefdao.processor
 
-import com.dcoletto.dslpoet.writeToFiler
-import com.dcoletto.sharedprefdao.annotation.SharedPrefDao
+import com.coletz.dslpoet.writeToFiler
+import com.coletz.sharedprefdao.annotation.SharedPrefDao
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.FileSpec
 import javax.annotation.processing.*
@@ -9,7 +9,6 @@ import javax.lang.model.SourceVersion
 import javax.lang.model.element.ElementKind
 
 import javax.lang.model.element.TypeElement
-import javax.lang.model.element.VariableElement
 import javax.tools.Diagnostic.Kind.*
 
 @AutoService(Processor::class)

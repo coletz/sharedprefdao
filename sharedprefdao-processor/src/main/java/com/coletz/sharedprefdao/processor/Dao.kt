@@ -1,9 +1,9 @@
-package com.dcoletto.sharedprefdao.processor
+package com.coletz.sharedprefdao.processor
 
-import com.dcoletto.dslpoet.*
-import com.dcoletto.sharedprefdao.annotation.DefaultValue
-import com.dcoletto.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
-import com.dcoletto.sharedprefdao.annotation.SharedPrefDao
+import com.coletz.dslpoet.*
+import com.coletz.sharedprefdao.annotation.DefaultValue
+import com.coletz.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
+import com.coletz.sharedprefdao.annotation.SharedPrefDao
 import com.squareup.kotlinpoet.*
 import org.jetbrains.annotations.Nullable
 import java.util.*

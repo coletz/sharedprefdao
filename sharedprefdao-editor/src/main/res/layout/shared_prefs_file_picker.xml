@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.dcoletto.sharedprefdao.editor.SharedPrefFileActivity">
+    tools:context="com.coletz.sharedprefdao.editor.SharedPrefFileActivity">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/shared_preferences_list"

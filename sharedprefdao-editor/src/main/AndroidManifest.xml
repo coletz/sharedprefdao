@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.dcoletto.sharedprefdao.editor">
+    package="com.coletz.sharedprefdao.editor">
 
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true">
         <activity
-            android:name=".SharedPrefFileActivity"
+            android:name="com.coletz.sharedprefdao.editor.SharedPrefFileActivity"
             android:exported="true"
             android:hardwareAccelerated="true"
             android:label="@string/title_activity_main"
@@ -19,7 +19,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".SharedPrefListActivity"
+            android:name="com.coletz.sharedprefdao.editor.SharedPrefListActivity"
             android:hardwareAccelerated="true"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBar">

@@ -1,4 +1,4 @@
-package com.dcoletto.sharedprefdao.annotation
+package com.coletz.sharedprefdao.annotation
 
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS)

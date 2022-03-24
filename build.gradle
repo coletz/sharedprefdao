@@ -3,7 +3,7 @@
 buildscript {
     ext.lib = [
             'groupId': 'com.coletz.sharedprefdao',
-            'version': '0.1.1'
+            'version': '0.1.2'
     ]
     ext.deps = [
             'kotlin': '1.6.10'

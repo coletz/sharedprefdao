@@ -17,9 +17,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect"
 }
 
-sourceCompatibility = "8"
-targetCompatibility = "8"
-
 afterEvaluate {
     publishing {
         publications {

@@ -7,9 +7,6 @@ dependencies {
     implementation"org.jetbrains.kotlin:kotlin-stdlib:${deps.kotlin}"
 }
 
-sourceCompatibility = "8"
-targetCompatibility = "8"
-
 afterEvaluate {
     publishing {
         publications {

@@ -5,8 +5,8 @@ Add to your project:
 ```
 dependencies {
     ...
-    implementation 'com.github.coletz:sharedprefdao:0.1.1'
-    kapt 'com.github.coletz:sharedprefdao:0.1.1'
+    implementation 'com.github.coletz:sharedprefdao:0.1.2'
+    kapt 'com.github.coletz:sharedprefdao:0.1.2'
     ...
 }
 ```

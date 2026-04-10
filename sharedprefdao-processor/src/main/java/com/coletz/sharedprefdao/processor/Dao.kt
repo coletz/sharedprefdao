@@ -93,7 +93,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                 // valueOf defValueAnnotation
                                                 enumElement.enclosedElements
                                                         .filter { it.kind == ElementKind.ENUM_CONSTANT }
-                                                        .firstOrNull { it.simpleName.toString().lowercase() == defValAnnotation.lowercase() }
+                                                        .firstOrNull { it.simpleName.toString().equals(defValAnnotation, ignoreCase = true) }
                                                         ?: throw Exception("String `$defValAnnotation` used as DefaultValue is not present in enum class ${enumElement.simpleName}")
                                             }
                                         }

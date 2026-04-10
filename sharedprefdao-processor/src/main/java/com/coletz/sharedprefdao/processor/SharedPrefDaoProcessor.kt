@@ -41,7 +41,7 @@ class SharedPrefDaoProcessor: AbstractProcessor() {
                 return true
             }
 
-            val annotation = annotatedElement.getAnnotation(SharedPrefDao::class.java)
+            val annotation = annotatedElement.getAnnotation(SharedPrefDao::class.java) ?: return false
 
             annotatedClasses.add(Dao(annotatedElement as TypeElement, annotation))
         }

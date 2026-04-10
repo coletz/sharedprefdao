@@ -1,6 +1,7 @@
 package com.coletz.sharedprefdao
 
 import com.coletz.sharedprefdao.annotation.DefaultValue
+import com.coletz.sharedprefdao.annotation.Name
 import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
 import com.coletz.sharedprefdao.annotation.StringId
@@ -68,4 +69,8 @@ interface ExamplePrefs {
     // Enum with @StringId
     @get:StringId("label")
     val sampleEnumStringIdWithoutDefault: SampleEnum?
+
+    // Custom key name
+    @get:Name("user_display_name")
+    var customNamedPref: String
 }

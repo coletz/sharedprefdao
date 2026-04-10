@@ -3,6 +3,7 @@ package com.coletz.sharedprefdao.processor
 import com.coletz.dslpoet.*
 import com.coletz.sharedprefdao.annotation.DefaultValue
 import com.coletz.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
+import com.coletz.sharedprefdao.annotation.Name
 import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
 import com.coletz.sharedprefdao.annotation.StringId
@@ -57,7 +58,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                             .build())
                 }
 
-                val keys = arrayListOf<String>()
+                val keys = arrayListOf<SharedPreferenceKey>()
 
                 daoInterface.enclosedElements.forEach { element ->
                     if(element.kind == ElementKind.METHOD){
@@ -78,9 +79,10 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                             val propertyType = retType.asTypeName().javaToKotlinType()
                             val className = ClassName.bestGuess(propertyType.toString())
                             val classSimpleName = className.simpleName.replaceFirstChar { it.titlecase() }
-                            val key = "${annotation.prefix}_${propertyName.uppercase()}_KEY"
-
-                            keys.add(key)
+                            val nameAnnotation = element.getAnnotation(Name::class.java)
+                            val keyName = "${annotation.prefix}_${propertyName.uppercase()}_KEY"
+                            val keyValue = nameAnnotation?.value ?: keyName
+                            keys.add(SharedPreferenceKey(name = keyName.uppercase(), value = keyValue))
 
                             if((retType is DeclaredType) && retType.asElement().kind == ElementKind.ENUM) {
                                 // PROCESS ENUM
@@ -114,11 +116,11 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     if (stringIdAnnotation != null) {
                                         val idField = stringIdAnnotation.value
                                         val defGetterCode = if (defVal != null) {
-                                            """|return sp.getString($key, $classSimpleName.$defVal.$idField)
+                                            """|return sp.getString($keyName, $classSimpleName.$defVal.$idField)
                                                 |    ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } 
                                                 |    ?: $classSimpleName.$defVal""".trimMargin()
                                         } else {
-                                            """return sp.getString($key, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }"""
+                                            """return sp.getString($keyName, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }"""
                                         }
 
                                         getter { code(defGetterCode) }
@@ -127,24 +129,24 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                             if (isNullable) {
                                                 code("""
                                                     |sp.edit().run {
-                                                    |    if (value == null) remove($key) else putString($key, value.$idField)
+                                                    |    if (value == null) remove($keyName) else putString($keyName, value.$idField)
                                                     |}.apply()
                                                     |""".trimMargin())
                                             } else {
-                                                code("""sp.edit().putString($key, value.$idField).apply()""")
+                                                code("""sp.edit().putString($keyName, value.$idField).apply()""")
                                             }
                                         }
                                     } else if (numericIdAnnotation != null) {
                                         val idField = numericIdAnnotation.value
                                         val defGetterCode = if (defVal != null) {
                                             """
-                                            |return sp.getInt($key, $classSimpleName.$defVal.$idField)
+                                            |return sp.getInt($keyName, $classSimpleName.$defVal.$idField)
                                             |    .let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }
                                             |    ?: $classSimpleName.$defVal
                                             |""".trimMargin()
                                         } else {
                                             """
-                                                | return $key
+                                                | return $keyName
                                                 | .takeIf { sp.contains(it) }
                                                 | ?.let { sp.getInt(it, 0) }
                                                 | ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }
@@ -157,21 +159,21 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                             if (isNullable) {
                                                 code("""
                                                     |sp.edit().run {
-                                                    |    if (value == null) remove($key) else putInt($key, value.$idField)
+                                                    |    if (value == null) remove($keyName) else putInt($keyName, value.$idField)
                                                     |}.apply()
                                                     |""".trimMargin())
                                             } else {
-                                                code("""sp.edit().putInt($key, value.$idField).apply()""")
+                                                code("""sp.edit().putInt($keyName, value.$idField).apply()""")
                                             }
                                         }
                                     } else {
                                         // Default: use ordinal
                                         getter {
                                             if (defVal != null) {
-                                                code("""return $classSimpleName.entries[sp.getInt($key, $classSimpleName.$defVal.ordinal)] """)
+                                                code("""return $classSimpleName.entries[sp.getInt($keyName, $classSimpleName.$defVal.ordinal)] """)
                                             } else {
                                                 code("""
-                                                    |val key = $key
+                                                    |val key = $keyName
                                                     |return if (sp.contains(key)) $classSimpleName.entries[sp.getInt(key, 0)] else null
                                                     |""".trimMargin())
                                             }
@@ -181,11 +183,11 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                             if (isNullable) {
                                                 code("""
                                                     |sp.edit().run {
-                                                    |    if (value == null) remove($key) else putInt($key, value.ordinal)
+                                                    |    if (value == null) remove($keyName) else putInt($keyName, value.ordinal)
                                                     |}.apply()
                                                     |""".trimMargin())
                                             } else {
-                                                code("""sp.edit().putInt($key, value.ordinal).apply()""")
+                                                code("""sp.edit().putInt($keyName, value.ordinal).apply()""")
                                             }
                                         }
                                     }
@@ -204,17 +206,17 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     getter {
                                         when {
                                             isNullable -> {
-                                                code("""return sp.getStringSet($key, null)""")
+                                                code("""return sp.getStringSet($keyName, null)""")
                                             }
                                             else -> {
                                                 val defVal = "setOf()"
-                                                code("""return sp.getStringSet($key, $defVal) ?: $defVal""")
+                                                code("""return sp.getStringSet($keyName, $defVal) ?: $defVal""")
                                             }
                                         }
                                     }
 
                                     setter(propertyType) {
-                                        code("""sp.edit().putStringSet($key, value).apply()""")
+                                        code("""sp.edit().putStringSet($keyName, value).apply()""")
                                     }
                                 }
                             } else {
@@ -232,7 +234,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                     isNullable -> null
                                                     else ->  "\"$EMPTY_STRING\""
                                                 }
-                                                code("""return sp.getString($key, $defVal) ?: $defVal""")
+                                                code("""return sp.getString($keyName, $defVal) ?: $defVal""")
                                             }
                                             "kotlin.Boolean" -> {
                                                 val defVal = when {
@@ -240,7 +242,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                     isNullable -> null
                                                     else ->  false
                                                 }
-                                                code("""return sp.getBoolean($key, $defVal) """)
+                                                code("""return sp.getBoolean($keyName, $defVal) """)
                                             }
                                             "kotlin.Float" -> {
                                                 val defVal = when {
@@ -248,7 +250,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                     isNullable -> null
                                                     else ->  0F
                                                 }
-                                                code("""return sp.getFloat($key, ${defVal}f) """)
+                                                code("""return sp.getFloat($keyName, ${defVal}f) """)
                                             }
                                             "kotlin.Int" -> {
                                                 val defVal = when {
@@ -256,7 +258,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                     isNullable -> null
                                                     else ->  0
                                                 }
-                                                code("""return sp.getInt($key, $defVal) """)
+                                                code("""return sp.getInt($keyName, $defVal) """)
                                             }
                                             "kotlin.Long" -> {
                                                 val defVal = when {
@@ -264,7 +266,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                                     isNullable -> null
                                                     else ->  0L
                                                 }
-                                                code("""return sp.getLong($key, $defVal) """)
+                                                code("""return sp.getLong($keyName, $defVal) """)
                                             }
                                             else -> {
                                                 throw Exception("This type [$propertyType] is not supported")
@@ -276,11 +278,11 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                         if (isNullable) {
                                             code("""
                                                 |sp.edit().run {
-                                                |    if (value == null) remove($key) else put$classSimpleName($key, value)
+                                                |    if (value == null) remove($keyName) else put$classSimpleName($keyName, value)
                                                 |}.apply()
                                                 |""".trimMargin())
                                         } else {
-                                            code("""sp.edit().put$classSimpleName($key, value).apply()""")
+                                            code("""sp.edit().put$classSimpleName($keyName, value).apply()""")
 
                                         }
                                     }
@@ -291,10 +293,10 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                 }
 
                 companion {
-                    keys.forEach {
-                        property<String>(it){
+                    keys.forEach { (name, value) ->
+                        property<String>(name){
                             addModifiers(KModifier.CONST)
-                            initializer(""""$it"""")
+                            initializer(""""$value"""")
                         }
                     }
                 }
@@ -302,3 +304,4 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
         }
     }
 }
+

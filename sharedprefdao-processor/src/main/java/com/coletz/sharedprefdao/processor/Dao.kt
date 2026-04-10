@@ -111,7 +111,15 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     }
 
                                     setter(propertyType) {
-                                        code("""sp.edit().putInt($key, value.ordinal).apply()""")
+                                        if (isNullable) {
+                                            code("""
+                                                |sp.edit().run {
+                                                |    if (value == null) remove($key) else putInt($key, value.ordinal)
+                                                |}.apply()
+                                                |""".trimMargin())
+                                        } else {
+                                            code("""sp.edit().putInt($key, value.ordinal).apply()""")
+                                        }
                                     }
                                 }
                             //} else if(is set of string){
@@ -202,7 +210,6 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                             code("""sp.edit().put$classSimpleName($key, value).apply()""")
 
                                         }
-
                                     }
                                 }
                             }

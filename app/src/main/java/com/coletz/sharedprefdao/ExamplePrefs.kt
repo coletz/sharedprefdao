@@ -1,12 +1,14 @@
 package com.coletz.sharedprefdao
 
 import com.coletz.sharedprefdao.annotation.DefaultValue
+import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
+import com.coletz.sharedprefdao.annotation.StringId
 
-enum class SampleEnum {
-    FIRST,
-    SECOND,
-    THIRD
+enum class SampleEnum(val id: Int, val label: String) {
+    FIRST(10, "first_label"),
+    SECOND(20, "second_label"),
+    THIRD(30, "third_label")
 }
 
 @SharedPrefDao
@@ -40,8 +42,30 @@ interface ExamplePrefs {
     val sampleStringSet: Set<String>?
     var sampleStringSetNonNull: Set<String>
 
-    // Enum
+    // Enum (ordinal - default)
     @get:DefaultValue("1")
     val sampleEnum: SampleEnum?
     var sampleEnumNonNull: SampleEnum
+
+    // Enum with @NumericId
+    @get:NumericId("id")
+    @get:DefaultValue("SECOND")
+    val sampleEnumNumericId: SampleEnum?
+    @get:NumericId("id")
+    var sampleEnumNumericIdNonNull: SampleEnum
+
+    // Enum with @StringId
+    @get:StringId("label")
+    @get:DefaultValue("THIRD")
+    val sampleEnumStringId: SampleEnum?
+    @get:StringId("label")
+    var sampleEnumStringIdNonNull: SampleEnum
+
+    // Enum with @NumericId without default
+    @get:NumericId("id")
+    val sampleEnumNumericIdWithoutDefault: SampleEnum?
+
+    // Enum with @StringId
+    @get:StringId("label")
+    val sampleEnumStringIdWithoutDefault: SampleEnum?
 }

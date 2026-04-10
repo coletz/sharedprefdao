@@ -3,7 +3,9 @@ package com.coletz.sharedprefdao.processor
 import com.coletz.dslpoet.*
 import com.coletz.sharedprefdao.annotation.DefaultValue
 import com.coletz.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
+import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
+import com.coletz.sharedprefdao.annotation.StringId
 import com.squareup.kotlinpoet.*
 import org.jetbrains.annotations.Nullable
 import java.util.*
@@ -84,6 +86,9 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                 // PROCESS ENUM
                                 val enumElement = retType.asElement()
 
+                                val stringIdAnnotation = element.getAnnotation(StringId::class.java)
+                                val numericIdAnnotation = element.getAnnotation(NumericId::class.java)
+
                                 val defVal = defaultValueAnnotation?.value.let { defValAnnotation ->
                                     when {
                                         defValAnnotation != null -> {
@@ -106,19 +111,82 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     addModifiers(KModifier.OVERRIDE)
                                     mutable()
 
-                                    getter {
-                                        code("""return $classSimpleName.entries[sp.getInt($key, $classSimpleName.$defVal.ordinal)] """)
-                                    }
-
-                                    setter(propertyType) {
-                                        if (isNullable) {
-                                            code("""
-                                                |sp.edit().run {
-                                                |    if (value == null) remove($key) else putInt($key, value.ordinal)
-                                                |}.apply()
-                                                |""".trimMargin())
+                                    if (stringIdAnnotation != null) {
+                                        val idField = stringIdAnnotation.value
+                                        val defGetterCode = if (defVal != null) {
+                                            """|return sp.getString($key, $classSimpleName.$defVal.$idField)
+                                                |    ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } 
+                                                |    ?: $classSimpleName.$defVal""".trimMargin()
                                         } else {
-                                            code("""sp.edit().putInt($key, value.ordinal).apply()""")
+                                            """return sp.getString($key, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }"""
+                                        }
+
+                                        getter { code(defGetterCode) }
+
+                                        setter(propertyType) {
+                                            if (isNullable) {
+                                                code("""
+                                                    |sp.edit().run {
+                                                    |    if (value == null) remove($key) else putString($key, value.$idField)
+                                                    |}.apply()
+                                                    |""".trimMargin())
+                                            } else {
+                                                code("""sp.edit().putString($key, value.$idField).apply()""")
+                                            }
+                                        }
+                                    } else if (numericIdAnnotation != null) {
+                                        val idField = numericIdAnnotation.value
+                                        val defGetterCode = if (defVal != null) {
+                                            """
+                                            |return sp.getInt($key, $classSimpleName.$defVal.$idField)
+                                            |    .let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }
+                                            |    ?: $classSimpleName.$defVal
+                                            |""".trimMargin()
+                                        } else {
+                                            """
+                                                | return $key
+                                                | .takeIf { sp.contains(it) }
+                                                | ?.let { sp.getInt(it, 0) }
+                                                | ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }
+                                            |""".trimMargin()
+                                        }
+
+                                        getter { code(defGetterCode) }
+
+                                        setter(propertyType) {
+                                            if (isNullable) {
+                                                code("""
+                                                    |sp.edit().run {
+                                                    |    if (value == null) remove($key) else putInt($key, value.$idField)
+                                                    |}.apply()
+                                                    |""".trimMargin())
+                                            } else {
+                                                code("""sp.edit().putInt($key, value.$idField).apply()""")
+                                            }
+                                        }
+                                    } else {
+                                        // Default: use ordinal
+                                        getter {
+                                            if (defVal != null) {
+                                                code("""return $classSimpleName.entries[sp.getInt($key, $classSimpleName.$defVal.ordinal)] """)
+                                            } else {
+                                                code("""
+                                                    |val key = $key
+                                                    |return if (sp.contains(key)) $classSimpleName.entries[sp.getInt(key, 0)] else null
+                                                    |""".trimMargin())
+                                            }
+                                        }
+
+                                        setter(propertyType) {
+                                            if (isNullable) {
+                                                code("""
+                                                    |sp.edit().run {
+                                                    |    if (value == null) remove($key) else putInt($key, value.ordinal)
+                                                    |}.apply()
+                                                    |""".trimMargin())
+                                            } else {
+                                                code("""sp.edit().putInt($key, value.ordinal).apply()""")
+                                            }
                                         }
                                     }
                                 }

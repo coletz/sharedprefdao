@@ -192,7 +192,17 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     }
 
                                     setter(propertyType) {
-                                        code("""sp.edit().put$classSimpleName($key, value).apply()""")
+                                        if (isNullable) {
+                                            code("""
+                                                |sp.edit().run {
+                                                |    if (value == null) remove($key) else put$classSimpleName($key, value)
+                                                |}.apply()
+                                                |""".trimMargin())
+                                        } else {
+                                            code("""sp.edit().put$classSimpleName($key, value).apply()""")
+
+                                        }
+
                                     }
                                 }
                             }

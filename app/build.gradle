@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-parcelize'
+apply plugin: 'kotlin-kapt'
 
 android {
     namespace "com.coletz.sharedprefdao"
@@ -45,4 +45,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
 
     implementation project(":sharedprefdao-editor")
+    implementation project(":sharedprefdao-annotation")
+    kapt project(":sharedprefdao-processor")
 }

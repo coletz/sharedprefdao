@@ -15,7 +15,7 @@ fun TypeName.javaToKotlinType(): TypeName =
         if (this is ParameterizedTypeName) {
             (rawType.javaToKotlinType() as ClassName).parameterizedBy(
                     *typeArguments.map { it.javaToKotlinType() }.toTypedArray()
-            )
+            ).copy(nullable = isNullable)
         } else {
             val className = JavaToKotlinClassMap
                     .INSTANCE

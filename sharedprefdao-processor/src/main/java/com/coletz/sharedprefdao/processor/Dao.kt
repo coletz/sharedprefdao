@@ -107,7 +107,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     mutable()
 
                                     getter {
-                                        code("""return $classSimpleName.values()[sp.getInt($key, $classSimpleName.$defVal.ordinal)] """)
+                                        code("""return $classSimpleName.entries[sp.getInt($key, $classSimpleName.$defVal.ordinal)] """)
                                     }
 
                                     setter(propertyType) {
@@ -133,13 +133,16 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     addModifiers(KModifier.OVERRIDE)
                                     mutable()
 
-                                    val defVal = when {
-                                        isNullable -> null
-                                        else ->  "setOf()"
-                                    }
-
                                     getter {
-                                        code("""return sp.getStringSet($key, $defVal) """)
+                                        when {
+                                            isNullable -> {
+                                                code("""return sp.getStringSet($key, null)""")
+                                            }
+                                            else -> {
+                                                val defVal = "setOf()"
+                                                code("""return sp.getStringSet($key, $defVal) ?: $defVal""")
+                                            }
+                                        }
                                     }
 
                                     setter(propertyType) {
@@ -148,55 +151,57 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                 }
                             } else {
                                 // PROCESS NORMAL TYPES
-                                val defVal: Any? = defaultValueAnnotation?.value.let { defValAnnotation ->
-                                    when(propertyType.toString()){
-                                        "kotlin.String" -> {
-                                            when {
-                                                defValAnnotation != null -> "\"$defValAnnotation\""
-                                                isNullable -> null
-                                                else ->  "\"$EMPTY_STRING\""
-                                            }
-                                        }
-                                        "kotlin.Boolean" -> {
-                                            when {
-                                                defValAnnotation != null -> defValAnnotation.toBooleanOrNull() ?: throw Exception("$defValAnnotation` can't be used as DefaultValue for an Boolean property")
-                                                isNullable -> null
-                                                else ->  false
-                                            }
-                                        }
-                                        "kotlin.Float" -> {
-                                            when {
-                                                defValAnnotation != null -> defValAnnotation.toFloatOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Float property")
-                                                isNullable -> null
-                                                else ->  0F
-                                            }
-                                        }
-                                        "kotlin.Int" -> {
-                                            when {
-                                                defValAnnotation != null -> defValAnnotation.toIntOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Int property")
-                                                isNullable -> null
-                                                else ->  0
-                                            }
-                                        }
-                                        "kotlin.Long" -> {
-                                            when {
-                                                defValAnnotation != null -> defValAnnotation.toLongOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Long property")
-                                                isNullable -> null
-                                                else ->  0L
-                                            }
-                                        }
-                                        else -> {
-                                            throw Exception("This type [$propertyType] is not supported")
-                                        }
-                                    }
-                                }
-
                                 property(propertyName, propertyType.copy(nullable = isNullable)) {
                                     addModifiers(KModifier.OVERRIDE)
                                     mutable()
 
                                     getter {
-                                        code("""return sp.get$classSimpleName($key, $defVal) """)
+                                        val defValAnnotation = defaultValueAnnotation?.value
+                                        when(propertyType.toString()){
+                                            "kotlin.String" -> {
+                                                val defVal = when {
+                                                    defValAnnotation != null -> "\"$defValAnnotation\""
+                                                    isNullable -> null
+                                                    else ->  "\"$EMPTY_STRING\""
+                                                }
+                                                code("""return sp.getString($key, $defVal) ?: $defVal""")
+                                            }
+                                            "kotlin.Boolean" -> {
+                                                val defVal = when {
+                                                    defValAnnotation != null -> defValAnnotation.toBooleanOrNull() ?: throw Exception("$defValAnnotation` can't be used as DefaultValue for an Boolean property")
+                                                    isNullable -> null
+                                                    else ->  false
+                                                }
+                                                code("""return sp.getBoolean($key, $defVal) """)
+                                            }
+                                            "kotlin.Float" -> {
+                                                val defVal = when {
+                                                    defValAnnotation != null -> defValAnnotation.toFloatOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Float property")
+                                                    isNullable -> null
+                                                    else ->  0F
+                                                }
+                                                code("""return sp.getFloat($key, ${defVal}f) """)
+                                            }
+                                            "kotlin.Int" -> {
+                                                val defVal = when {
+                                                    defValAnnotation != null -> defValAnnotation.toIntOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Int property")
+                                                    isNullable -> null
+                                                    else ->  0
+                                                }
+                                                code("""return sp.getInt($key, $defVal) """)
+                                            }
+                                            "kotlin.Long" -> {
+                                                val defVal = when {
+                                                    defValAnnotation != null -> defValAnnotation.toLongOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Long property")
+                                                    isNullable -> null
+                                                    else ->  0L
+                                                }
+                                                code("""return sp.getLong($key, $defVal) """)
+                                            }
+                                            else -> {
+                                                throw Exception("This type [$propertyType] is not supported")
+                                            }
+                                        }
                                     }
 
                                     setter(propertyType) {

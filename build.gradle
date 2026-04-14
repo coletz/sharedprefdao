@@ -6,7 +6,7 @@ buildscript {
             'version': '0.3.0'
     ]
     ext.deps = [
-            'kotlin': '2.1.21'
+            'kotlin': '2.3.20'
     ]
     repositories {
         google()
@@ -14,7 +14,7 @@ buildscript {
 
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.10.1'
+        classpath 'com.android.tools.build:gradle:8.13.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${deps.kotlin}"
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -30,6 +30,6 @@ allprojects {
     }
 }
 
-task clean(type: Delete) {
+tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }

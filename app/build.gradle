@@ -7,11 +7,11 @@ apply plugin: 'kotlin-kapt'
 android {
     namespace "com.coletz.sharedprefdao"
 
-    compileSdkVersion 35
+    compileSdkVersion 37
     defaultConfig {
         applicationId "com.coletz.sharedprefdao"
-        minSdkVersion 21
-        targetSdkVersion 35
+        minSdkVersion 23
+        targetSdkVersion 37
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'

@@ -71,8 +71,9 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                 addModifiers(KModifier.FINAL)
                 constructor {
                     addModifiers(KModifier.INTERNAL)
-                    addParameter("sp", spType, KModifier.PRIVATE)
+                    addParameter("sp", spType)
                     addProperty(PropertySpec.builder("sp", spType)
+                            .addModifiers(KModifier.PRIVATE)
                             .initializer("sp")
                             .build())
                 }

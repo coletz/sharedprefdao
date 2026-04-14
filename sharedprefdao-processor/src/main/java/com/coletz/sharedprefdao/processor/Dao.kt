@@ -30,7 +30,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
         return file(packageName, className) {
 
             val generatorFuncName = daoInterface.simpleName.toString().replaceFirstChar { it.lowercase() }
-            val generatorFuncType = daoInterface.asType().asTypeName()
+            val generatorFuncType = ClassName(packageName, className)
             val spName = annotation.name.takeIf { it.isNotBlank() } ?: generatorFuncName.uppercase().plus("_SP")
 
 

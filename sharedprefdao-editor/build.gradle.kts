@@ -2,7 +2,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.maven.publish)
 }
 
@@ -31,6 +30,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 kotlin {
@@ -45,15 +50,15 @@ dependencies {
     implementation(libs.material)
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
+publishing {
+    publications {
+        register<MavenPublication>("release") {
+            groupId = "com.coletz.sharedprefdao"
+            artifactId = "editor"
+            version = libs.versions.lib.version.get()
 
-                groupId = "com.coletz.sharedprefdao"
-                artifactId = "editor"
-                version = libs.versions.lib.version.get()
+            afterEvaluate {
+                from(components["release"])
             }
         }
     }

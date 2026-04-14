@@ -3,18 +3,16 @@ plugins {
     alias(libs.plugins.maven.publish)
 }
 
-dependencies {
-    implementation(libs.kotlin.stdlib)
-}
-
 publishing {
     publications {
-        create<MavenPublication>("release") {
-            from(components["java"])
-
+        register<MavenPublication>("release") {
             groupId = "com.coletz.sharedprefdao"
             artifactId = "annotation"
             version = libs.versions.lib.version.get()
+
+            afterEvaluate {
+                from(components["java"])
+            }
         }
     }
 }

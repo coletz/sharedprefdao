@@ -9,7 +9,7 @@ minSdkApp = "23"
 targetSdk = "37"
 
 # Languages & Build
-agp = "8.13.2"
+agp = "9.1.1"
 kotlin = "2.3.20"
 jvmTarget = "21"
 
@@ -38,8 +38,6 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 # Kotlin
-kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
-kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 
 # Code Generation
@@ -51,7 +49,7 @@ autoservice = { group = "com.google.auto.service", name = "auto-service", versio
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+legacy-kapt = { id = "com.android.legacy-kapt", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 maven-publish = { id = "maven-publish" }

@@ -3,15 +3,25 @@ package com.coletz.sharedprefdao.processor
 import com.coletz.dslpoet.*
 import com.coletz.sharedprefdao.annotation.DefaultValue
 import com.coletz.sharedprefdao.annotation.DefaultValue.Companion.EMPTY_STRING
+import com.coletz.sharedprefdao.annotation.Flow
 import com.coletz.sharedprefdao.annotation.Name
 import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
 import com.coletz.sharedprefdao.annotation.StringId
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import org.jetbrains.annotations.Nullable
 import java.util.*
 import javax.lang.model.element.*
 import javax.lang.model.type.*
+
+private val mutableStateFlowType = ClassName("kotlinx.coroutines.flow", "MutableStateFlow")
+private val stateFlowType = ClassName("kotlinx.coroutines.flow", "StateFlow")
+
+private data class FlowPropertyInfo(
+    val propertyName: String,
+    val keyName: String
+)
 
 class Dao(private val daoInterface: TypeElement, private val annotation: SharedPrefDao){
     private val packageName = daoInterface.parentPackage.qualifiedName.toString()
@@ -28,6 +38,8 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
         val ctxType = ClassName("android.content", "Context")
 
         return file(packageName, className) {
+            // Add import for asStateFlow extension function (needed when @Flow is used)
+            addImport("kotlinx.coroutines.flow", "asStateFlow")
 
             val generatorFuncName = daoInterface.simpleName.toString().replaceFirstChar { it.lowercase() }
             val generatorFuncType = ClassName(packageName, className)
@@ -59,6 +71,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                 }
 
                 val keys = arrayListOf<SharedPreferenceKey>()
+                val flowProperties = arrayListOf<FlowPropertyInfo>()
 
                 daoInterface.enclosedElements.forEach { element ->
                     if(element.kind == ElementKind.METHOD){
@@ -109,6 +122,35 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                     }
                                 }
 
+                                // Determine getter code for flow (used in property and flow initialization)
+                                // Wrapped in parentheses to prevent KotlinPoet line-breaking in the middle of expressions
+                                val enumFlowGetterCode: String = when {
+                                    stringIdAnnotation != null -> {
+                                        val idField = stringIdAnnotation.value
+                                        if (defVal != null) {
+                                            """(sp.getString($keyName, $classSimpleName.$defVal.$idField)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } ?: $classSimpleName.$defVal)"""
+                                        } else {
+                                            """(sp.getString($keyName, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } })"""
+                                        }
+                                    }
+                                    numericIdAnnotation != null -> {
+                                        val idField = numericIdAnnotation.value
+                                        if (defVal != null) {
+                                            """(sp.getInt($keyName, $classSimpleName.$defVal.$idField).let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } ?: $classSimpleName.$defVal)"""
+                                        } else {
+                                            """($keyName.takeIf { sp.contains(it) }?.let { sp.getInt(it, 0) }?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } })"""
+                                        }
+                                    }
+                                    else -> {
+                                        // Default: use ordinal
+                                        if (defVal != null) {
+                                            """$classSimpleName.entries[sp.getInt($keyName, $classSimpleName.$defVal.ordinal)]"""
+                                        } else {
+                                            """(if (sp.contains($keyName)) $classSimpleName.entries[sp.getInt($keyName, 0)] else null)"""
+                                        }
+                                    }
+                                }
+
                                 property(propertyName, propertyType.copy(nullable = isNullable)) {
                                     addModifiers(KModifier.OVERRIDE)
                                     mutable()
@@ -117,7 +159,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                         val idField = stringIdAnnotation.value
                                         val defGetterCode = if (defVal != null) {
                                             """|return sp.getString($keyName, $classSimpleName.$defVal.$idField)
-                                                |    ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } 
+                                                |    ?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }
                                                 |    ?: $classSimpleName.$defVal""".trimMargin()
                                         } else {
                                             """return sp.getString($keyName, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } }"""
@@ -192,6 +234,32 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                         }
                                     }
                                 }
+
+                                // Generate flow property if @Flow annotation is present
+                                val flowAnnotation = element.getAnnotation(Flow::class.java)
+                                if (flowAnnotation != null) {
+                                    flowProperties.add(FlowPropertyInfo(
+                                        propertyName = propertyName,
+                                        keyName = keyName
+                                    ))
+
+                                    // Private backing MutableStateFlow
+                                    addProperty(PropertySpec.builder(
+                                        "_${propertyName}Flow",
+                                        mutableStateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                    )
+                                        .addModifiers(KModifier.PRIVATE)
+                                        .initializer("MutableStateFlow($enumFlowGetterCode)")
+                                        .build())
+
+                                    // Public read-only StateFlow
+                                    addProperty(PropertySpec.builder(
+                                        "${propertyName}Flow",
+                                        stateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                    )
+                                        .initializer("_${propertyName}Flow.asStateFlow()")
+                                        .build())
+                                }
                             //} else if(is set of string){
                             } else if(propertyType.toString() == "kotlin.collections.Set<kotlin.String>"){
                                 // PROCESS SET OF STRING
@@ -221,58 +289,60 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                 }
                             } else {
                                 // PROCESS NORMAL TYPES
+                                val defValAnnotation = defaultValueAnnotation?.value
+                                val flowGetterCode: String? = when(propertyType.toString()){
+                                    "kotlin.String" -> {
+                                        val defVal = when {
+                                            defValAnnotation != null -> "\"$defValAnnotation\""
+                                            isNullable -> null
+                                            else ->  "\"$EMPTY_STRING\""
+                                        }
+                                        """sp.getString($keyName, $defVal) ?: $defVal"""
+                                    }
+                                    "kotlin.Boolean" -> {
+                                        val defVal = when {
+                                            defValAnnotation != null -> defValAnnotation.toBooleanOrNull() ?: throw Exception("$defValAnnotation` can't be used as DefaultValue for an Boolean property")
+                                            isNullable -> null
+                                            else ->  false
+                                        }
+                                        """sp.getBoolean($keyName, $defVal)"""
+                                    }
+                                    "kotlin.Float" -> {
+                                        val defVal = when {
+                                            defValAnnotation != null -> defValAnnotation.toFloatOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Float property")
+                                            isNullable -> null
+                                            else ->  0F
+                                        }
+                                        """sp.getFloat($keyName, ${defVal}f)"""
+                                    }
+                                    "kotlin.Int" -> {
+                                        val defVal = when {
+                                            defValAnnotation != null -> defValAnnotation.toIntOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Int property")
+                                            isNullable -> null
+                                            else ->  0
+                                        }
+                                        """sp.getInt($keyName, $defVal)"""
+                                    }
+                                    "kotlin.Long" -> {
+                                        val defVal = when {
+                                            defValAnnotation != null -> defValAnnotation.toLongOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Long property")
+                                            isNullable -> null
+                                            else ->  0L
+                                        }
+                                        """sp.getLong($keyName, $defVal)"""
+                                    }
+                                    else -> null
+                                }
+
+                                if (flowGetterCode == null) {
+                                    throw Exception("This type [$propertyType] is not supported")
+                                }
+
                                 property(propertyName, propertyType.copy(nullable = isNullable)) {
                                     addModifiers(KModifier.OVERRIDE)
                                     mutable()
 
-                                    getter {
-                                        val defValAnnotation = defaultValueAnnotation?.value
-                                        when(propertyType.toString()){
-                                            "kotlin.String" -> {
-                                                val defVal = when {
-                                                    defValAnnotation != null -> "\"$defValAnnotation\""
-                                                    isNullable -> null
-                                                    else ->  "\"$EMPTY_STRING\""
-                                                }
-                                                code("""return sp.getString($keyName, $defVal) ?: $defVal""")
-                                            }
-                                            "kotlin.Boolean" -> {
-                                                val defVal = when {
-                                                    defValAnnotation != null -> defValAnnotation.toBooleanOrNull() ?: throw Exception("$defValAnnotation` can't be used as DefaultValue for an Boolean property")
-                                                    isNullable -> null
-                                                    else ->  false
-                                                }
-                                                code("""return sp.getBoolean($keyName, $defVal) """)
-                                            }
-                                            "kotlin.Float" -> {
-                                                val defVal = when {
-                                                    defValAnnotation != null -> defValAnnotation.toFloatOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Float property")
-                                                    isNullable -> null
-                                                    else ->  0F
-                                                }
-                                                code("""return sp.getFloat($keyName, ${defVal}f) """)
-                                            }
-                                            "kotlin.Int" -> {
-                                                val defVal = when {
-                                                    defValAnnotation != null -> defValAnnotation.toIntOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Int property")
-                                                    isNullable -> null
-                                                    else ->  0
-                                                }
-                                                code("""return sp.getInt($keyName, $defVal) """)
-                                            }
-                                            "kotlin.Long" -> {
-                                                val defVal = when {
-                                                    defValAnnotation != null -> defValAnnotation.toLongOrNull() ?: throw Exception("`$defValAnnotation` can't be used as DefaultValue for an Long property")
-                                                    isNullable -> null
-                                                    else ->  0L
-                                                }
-                                                code("""return sp.getLong($keyName, $defVal) """)
-                                            }
-                                            else -> {
-                                                throw Exception("This type [$propertyType] is not supported")
-                                            }
-                                        }
-                                    }
+                                    getter { code("return $flowGetterCode") }
 
                                     setter(propertyType) {
                                         if (isNullable) {
@@ -287,9 +357,70 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                                         }
                                     }
                                 }
+
+                                // Generate flow property if @Flow annotation is present
+                                val flowAnnotation = element.getAnnotation(Flow::class.java)
+                                if (flowAnnotation != null) {
+                                    flowProperties.add(FlowPropertyInfo(
+                                        propertyName = propertyName,
+                                        keyName = keyName
+                                    ))
+
+                                    // Private backing MutableStateFlow
+                                    addProperty(PropertySpec.builder(
+                                        "_${propertyName}Flow",
+                                        mutableStateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                    )
+                                        .addModifiers(KModifier.PRIVATE)
+                                        .initializer("MutableStateFlow($flowGetterCode)")
+                                        .build())
+
+                                    // Public read-only StateFlow
+                                    addProperty(PropertySpec.builder(
+                                        "${propertyName}Flow",
+                                        stateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                    )
+                                        .initializer("_${propertyName}Flow.asStateFlow()")
+                                        .build())
+                                }
                             }
                         }
                     }
+                }
+
+                // Generate flow listener infrastructure if any @Flow properties exist
+                if (flowProperties.isNotEmpty()) {
+                    val listenerType = ClassName("android.content", "SharedPreferences", "OnSharedPreferenceChangeListener")
+
+                    // Private listener field - uses property getter to avoid code duplication and line-wrapping issues
+                    addProperty(PropertySpec.builder("_flowPreferenceListener", listenerType)
+                        .addModifiers(KModifier.PRIVATE)
+                        .initializer(CodeBlock.builder()
+                            .add("SharedPreferences.OnSharedPreferenceChangeListener { _, key ->\n")
+                            .indent()
+                            .add("when (key) {\n")
+                            .indent()
+                            .apply {
+                                flowProperties.forEach { prop ->
+                                    add("${prop.keyName} -> _${prop.propertyName}Flow.value = ${prop.propertyName}\n")
+                                }
+                            }
+                            .unindent()
+                            .add("}\n")
+                            .unindent()
+                            .add("}")
+                            .build())
+                        .build())
+
+                    // Init block to register listener
+                    addInitializerBlock(CodeBlock.builder()
+                        .addStatement("sp.registerOnSharedPreferenceChangeListener(_flowPreferenceListener)")
+                        .build())
+
+                    // Unregister method
+                    addFunction(FunSpec.builder("unregisterFlowListeners")
+                        .addStatement("sp.unregisterOnSharedPreferenceChangeListener(_flowPreferenceListener)")
+                        .build())
                 }
 
                 companion {

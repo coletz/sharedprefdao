@@ -1,6 +1,7 @@
 package com.coletz.sharedprefdao
 
 import com.coletz.sharedprefdao.annotation.DefaultValue
+import com.coletz.sharedprefdao.annotation.Flow
 import com.coletz.sharedprefdao.annotation.Name
 import com.coletz.sharedprefdao.annotation.NumericId
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
@@ -73,4 +74,48 @@ interface ExamplePrefs {
     // Custom key name
     @get:Name("user_display_name")
     var customNamedPref: String
+
+    // Flow-enabled properties
+
+    // Int with Flow
+    @get:Flow
+    @get:DefaultValue("0")
+    var sampleIntWithFlow: Int
+
+    // Long with Flow
+    @get:Flow
+    @get:DefaultValue("1000")
+    var sampleLongWithFlow: Long
+
+    // Float with Flow
+    @get:Flow
+    @get:DefaultValue("1.5")
+    var sampleFloatWithFlow: Float
+
+    // Boolean with Flow
+    @get:Flow
+    @get:DefaultValue("false")
+    var sampleBooleanWithFlow: Boolean
+
+    // String with Flow
+    @get:Flow
+    @get:DefaultValue("default")
+    var sampleStringWithFlow: String
+
+    // Enum with Flow (ordinal storage)
+    @get:Flow
+    @get:DefaultValue("FIRST")
+    var sampleEnumWithFlow: SampleEnum
+
+    // Enum with Flow and @NumericId
+    @get:Flow
+    @get:NumericId("id")
+    @get:DefaultValue("SECOND")
+    var sampleEnumNumericIdWithFlow: SampleEnum
+
+    // Enum with Flow and @StringId
+    @get:Flow
+    @get:StringId("label")
+    @get:DefaultValue("THIRD")
+    var sampleEnumStringIdWithFlow: SampleEnum
 }

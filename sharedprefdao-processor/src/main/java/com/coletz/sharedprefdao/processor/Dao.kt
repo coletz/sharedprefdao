@@ -37,9 +37,16 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
         val spType = ClassName("android.content", "SharedPreferences")
         val ctxType = ClassName("android.content", "Context")
 
+        // Pre-scan to check if any @Flow annotations are present
+        val hasFlowAnnotations = daoInterface.enclosedElements.any { element ->
+            element.kind == ElementKind.METHOD && element.getAnnotation(Flow::class.java) != null
+        }
+
         return file(packageName, className) {
-            // Add import for asStateFlow extension function (needed when @Flow is used)
-            addImport("kotlinx.coroutines.flow", "asStateFlow")
+            // Add import for asStateFlow extension function only when @Flow is used
+            if (hasFlowAnnotations) {
+                addImport("kotlinx.coroutines.flow", "asStateFlow")
+            }
 
             val generatorFuncName = daoInterface.simpleName.toString().replaceFirstChar { it.lowercase() }
             val generatorFuncType = ClassName(packageName, className)

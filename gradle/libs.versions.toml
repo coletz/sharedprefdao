@@ -1,0 +1,57 @@
+[versions]
+# Project
+lib-version = "0.3.0"
+
+# SDK
+compileSdk = "37"
+minSdk = "21"
+minSdkApp = "23"
+targetSdk = "37"
+
+# Languages & Build
+agp = "8.13.2"
+kotlin = "2.3.20"
+jvmTarget = "21"
+
+# AndroidX
+appcompat = "1.7.1"
+constraintlayout = "2.2.1"
+core-ktx = "1.18.0"
+
+# Google
+material = "1.13.0"
+
+# Kotlin Libraries
+coroutines = "1.10.2"
+kotlinpoet = "2.3.0"
+
+# Annotation Processing
+autoservice = "1.1.1"
+
+[libraries]
+# AndroidX
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+
+# Google
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# Kotlin
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlin-reflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version.ref = "kotlin" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# Code Generation
+kotlinpoet = { group = "com.squareup", name = "kotlinpoet", version.ref = "kotlinpoet" }
+
+# Annotation Processing
+autoservice = { group = "com.google.auto.service", name = "auto-service", version.ref = "autoservice" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+maven-publish = { id = "maven-publish" }

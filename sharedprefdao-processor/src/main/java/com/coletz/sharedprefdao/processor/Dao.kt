@@ -419,8 +419,8 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
                             .build())
                         .build())
 
-                    // Init block to register listener
-                    addInitializerBlock(CodeBlock.builder()
+                    // Register method
+                    addFunction(FunSpec.builder("registerFlowListeners")
                         .addStatement("sp.registerOnSharedPreferenceChangeListener(_flowPreferenceListener)")
                         .build())
 

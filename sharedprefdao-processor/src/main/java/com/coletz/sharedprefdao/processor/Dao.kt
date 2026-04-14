@@ -20,7 +20,7 @@ class Dao(private val daoInterface: TypeElement, private val annotation: SharedP
             .qualifiedName
             .toString()
             .substring(packageName.length + 1)
-            .plus("_Impl")
+            .plus("Impl")
 
     fun generateCode(): FileSpec {
 

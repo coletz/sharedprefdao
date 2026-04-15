@@ -11,20 +11,12 @@ import com.coletz.sharedprefdao.annotation.StringId
 import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import java.util.*
 
-private val mutableStateFlowType = ClassName("kotlinx.coroutines.flow", "MutableStateFlow")
-private val stateFlowType = ClassName("kotlinx.coroutines.flow", "StateFlow")
-
-private data class FlowPropertyInfo(
-    val propertyName: String,
-    val keyName: String
-)
+private val flowType = ClassName("kotlinx.coroutines.flow", "Flow")
 
 class Dao(private val daoInterface: KSClassDeclaration) {
     private val annotation: SharedPrefDao = daoInterface.getAnnotationsByType(SharedPrefDao::class).first()
@@ -47,9 +39,11 @@ class Dao(private val daoInterface: KSClassDeclaration) {
         }
 
         return file(packageName, className) {
-            // Add import for asStateFlow extension function only when @Flow is used
+            // Add imports for callbackFlow when @Flow is used
             if (hasFlowAnnotations) {
-                addImport("kotlinx.coroutines.flow", "asStateFlow")
+                addImport("kotlinx.coroutines.channels", "awaitClose")
+                addImport("kotlinx.coroutines.flow", "callbackFlow")
+                addImport("kotlinx.coroutines.flow", "distinctUntilChanged")
             }
 
             val generatorFuncName = daoInterface.simpleName.asString().replaceFirstChar { it.lowercase() }
@@ -83,7 +77,6 @@ class Dao(private val daoInterface: KSClassDeclaration) {
                 }
 
                 val keys = arrayListOf<SharedPreferenceKey>()
-                val flowProperties = arrayListOf<FlowPropertyInfo>()
 
                 daoInterface.getAllProperties().forEach { property ->
                     val propertyName = property.simpleName.asString()
@@ -131,35 +124,6 @@ class Dao(private val daoInterface: KSClassDeclaration) {
                                 }
                                 isNullable -> null
                                 else -> enumEntries.first()
-                            }
-                        }
-
-                        // Determine getter code for flow (used in property and flow initialization)
-                        // Wrapped in parentheses to prevent KotlinPoet line-breaking in the middle of expressions
-                        val enumFlowGetterCode: String = when {
-                            stringIdAnnotation != null -> {
-                                val idField = stringIdAnnotation.value
-                                if (defVal != null) {
-                                    """(sp.getString($keyName, $classSimpleName.${defVal.simpleName.asString()}.$idField)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } ?: $classSimpleName.${defVal.simpleName.asString()})"""
-                                } else {
-                                    """(sp.getString($keyName, null)?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } })"""
-                                }
-                            }
-                            numericIdAnnotation != null -> {
-                                val idField = numericIdAnnotation.value
-                                if (defVal != null) {
-                                    """(sp.getInt($keyName, $classSimpleName.${defVal.simpleName.asString()}.$idField).let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } } ?: $classSimpleName.${defVal.simpleName.asString()})"""
-                                } else {
-                                    """($keyName.takeIf { sp.contains(it) }?.let { sp.getInt(it, 0) }?.let { id -> $classSimpleName.entries.firstOrNull { it.$idField == id } })"""
-                                }
-                            }
-                            else -> {
-                                // Default: use ordinal
-                                if (defVal != null) {
-                                    """$classSimpleName.entries[sp.getInt($keyName, $classSimpleName.${defVal.simpleName.asString()}.ordinal)]"""
-                                } else {
-                                    """(if (sp.contains($keyName)) $classSimpleName.entries[sp.getInt($keyName, 0)] else null)"""
-                                }
                             }
                         }
 
@@ -249,26 +213,24 @@ class Dao(private val daoInterface: KSClassDeclaration) {
 
                         // Generate flow property if @Flow annotation is present
                         if (flowAnnotation != null) {
-                            flowProperties.add(FlowPropertyInfo(
-                                propertyName = propertyName,
-                                keyName = keyName
-                            ))
-
-                            // Private backing MutableStateFlow
-                            addProperty(PropertySpec.builder(
-                                "_${propertyName}Flow",
-                                mutableStateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
-                            )
-                                .addModifiers(KModifier.PRIVATE)
-                                .initializer("MutableStateFlow($enumFlowGetterCode)")
-                                .build())
-
-                            // Public read-only StateFlow
                             addProperty(PropertySpec.builder(
                                 "${propertyName}Flow",
-                                stateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                flowType.parameterizedBy(propertyType.copy(nullable = isNullable))
                             )
-                                .initializer("_${propertyName}Flow.asStateFlow()")
+                                .initializer(CodeBlock.builder()
+                                    .add("callbackFlow {\n")
+                                    .indent()
+                                    .addStatement("trySend($propertyName)")
+                                    .add("val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->\n")
+                                    .indent()
+                                    .addStatement("if (key == $keyName) trySend($propertyName)")
+                                    .unindent()
+                                    .add("}\n")
+                                    .addStatement("sp.registerOnSharedPreferenceChangeListener(listener)")
+                                    .addStatement("awaitClose { sp.unregisterOnSharedPreferenceChangeListener(listener) }")
+                                    .unindent()
+                                    .add("}.distinctUntilChanged()")
+                                    .build())
                                 .build())
                         }
                     } else if (propertyType.copy(nullable = false).toString().let { it == "kotlin.collections.Set<kotlin.String>" || it == "Set<String>" }) {
@@ -371,64 +333,27 @@ class Dao(private val daoInterface: KSClassDeclaration) {
 
                         // Generate flow property if @Flow annotation is present
                         if (flowAnnotation != null) {
-                            flowProperties.add(FlowPropertyInfo(
-                                propertyName = propertyName,
-                                keyName = keyName
-                            ))
-
-                            // Private backing MutableStateFlow
-                            addProperty(PropertySpec.builder(
-                                "_${propertyName}Flow",
-                                mutableStateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
-                            )
-                                .addModifiers(KModifier.PRIVATE)
-                                .initializer("MutableStateFlow($flowGetterCode)")
-                                .build())
-
-                            // Public read-only StateFlow
                             addProperty(PropertySpec.builder(
                                 "${propertyName}Flow",
-                                stateFlowType.parameterizedBy(propertyType.copy(nullable = isNullable))
+                                flowType.parameterizedBy(propertyType.copy(nullable = isNullable))
                             )
-                                .initializer("_${propertyName}Flow.asStateFlow()")
+                                .initializer(CodeBlock.builder()
+                                    .add("callbackFlow {\n")
+                                    .indent()
+                                    .addStatement("trySend($propertyName)")
+                                    .add("val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->\n")
+                                    .indent()
+                                    .addStatement("if (key == $keyName) trySend($propertyName)")
+                                    .unindent()
+                                    .add("}\n")
+                                    .addStatement("sp.registerOnSharedPreferenceChangeListener(listener)")
+                                    .addStatement("awaitClose { sp.unregisterOnSharedPreferenceChangeListener(listener) }")
+                                    .unindent()
+                                    .add("}.distinctUntilChanged()")
+                                    .build())
                                 .build())
                         }
                     }
-                }
-
-                // Generate flow listener infrastructure if any @Flow properties exist
-                if (flowProperties.isNotEmpty()) {
-                    val listenerType = ClassName("android.content", "SharedPreferences", "OnSharedPreferenceChangeListener")
-
-                    // Private listener field - uses property getter to avoid code duplication and line-wrapping issues
-                    addProperty(PropertySpec.builder("_flowPreferenceListener", listenerType)
-                        .addModifiers(KModifier.PRIVATE)
-                        .initializer(CodeBlock.builder()
-                            .add("SharedPreferences.OnSharedPreferenceChangeListener { _, key ->\n")
-                            .indent()
-                            .add("when (key) {\n")
-                            .indent()
-                            .apply {
-                                flowProperties.forEach { prop ->
-                                    add("${prop.keyName} -> _${prop.propertyName}Flow.value = ${prop.propertyName}\n")
-                                }
-                            }
-                            .unindent()
-                            .add("}\n")
-                            .unindent()
-                            .add("}")
-                            .build())
-                        .build())
-
-                    // Register method
-                    addFunction(FunSpec.builder("registerFlowListeners")
-                        .addStatement("sp.registerOnSharedPreferenceChangeListener(_flowPreferenceListener)")
-                        .build())
-
-                    // Unregister method
-                    addFunction(FunSpec.builder("unregisterFlowListeners")
-                        .addStatement("sp.unregisterOnSharedPreferenceChangeListener(_flowPreferenceListener)")
-                        .build())
                 }
 
                 companion {

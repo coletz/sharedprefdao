@@ -1,67 +1,57 @@
 package com.coletz.sharedprefdao.processor
 
-import com.coletz.dslpoet.writeToFiler
 import com.coletz.sharedprefdao.annotation.SharedPrefDao
-import com.google.auto.service.AutoService
+import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Dependencies
+import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.processing.SymbolProcessor
+import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FileSpec
-import javax.annotation.processing.*
-import javax.lang.model.SourceVersion
-import javax.lang.model.element.ElementKind
 
-import javax.lang.model.element.TypeElement
-import javax.tools.Diagnostic.Kind.*
+class SharedPrefDaoProcessor(
+    private val codeGenerator: CodeGenerator,
+    private val logger: KSPLogger
+) : SymbolProcessor {
 
-@AutoService(Processor::class)
-class SharedPrefDaoProcessor: AbstractProcessor() {
+    override fun process(resolver: Resolver): List<KSAnnotated> {
+        val symbols = resolver.getSymbolsWithAnnotation(SharedPrefDao::class.qualifiedName!!)
 
-    private lateinit var messager: Messager
-    private lateinit var filer: Filer
+        val invalid = mutableListOf<KSAnnotated>()
 
-    private var annotatedClasses: ArrayList<Dao> = arrayListOf()
-
-    @Synchronized
-    override fun init(env: ProcessingEnvironment?) {
-        env?.let {
-            messager = it.messager
-            filer = it.filer
-        }
-    }
-
-    override fun getSupportedAnnotationTypes(): MutableSet<String> =
-            mutableSetOf(SharedPrefDao::class.java.canonicalName)
-
-    override fun getSupportedSourceVersion(): SourceVersion =
-            SourceVersion.latestSupported()
-
-    override fun process(set: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
-        if(roundEnv == null || set == null) return false
-
-        roundEnv.getElementsAnnotatedWith(SharedPrefDao::class.java)?.forEach { annotatedElement ->
-            if(annotatedElement.kind !== ElementKind.INTERFACE){
-                return true
+        symbols.filterIsInstance<KSClassDeclaration>()
+            .filter { it.classKind == ClassKind.INTERFACE }
+            .forEach { classDeclaration ->
+                try {
+                    val dao = Dao(classDeclaration)
+                    val fileSpec = dao.generateCode()
+                    writeToCodeGenerator(fileSpec, classDeclaration)
+                    logger.info("Generated ${fileSpec.name}.kt")
+                } catch (e: Exception) {
+                    logger.error("Error processing ${classDeclaration.simpleName.asString()}: ${e.message}", classDeclaration)
+                    invalid.add(classDeclaration)
+                }
             }
 
-            val annotation = annotatedElement.getAnnotation(SharedPrefDao::class.java) ?: return false
-
-            annotatedClasses.add(Dao(annotatedElement as TypeElement, annotation))
-        }
-
-        try {
-            annotatedClasses
-                    .map(Dao::generateCode)
-                    .forEach(::writeToFiler)
-
-
-            annotatedClasses.clear()
-        } catch (e: Exception) {
-            messager.printMessage(ERROR, e.message)
-        }
-
-        return true
+        return invalid
     }
 
-    private fun writeToFiler(fileSpec: FileSpec) {
-        fileSpec.writeToFiler(filer)
-                .let { messager.printMessage(NOTE, "Wrote to $it") }
+    private fun writeToCodeGenerator(fileSpec: FileSpec, originatingDeclaration: KSClassDeclaration) {
+        val containingFile = originatingDeclaration.containingFile
+        val dependencies = if (containingFile != null) {
+            Dependencies(aggregating = false, sources = arrayOf(containingFile))
+        } else {
+            Dependencies(aggregating = false)
+        }
+
+        codeGenerator.createNewFile(
+            dependencies = dependencies,
+            packageName = fileSpec.packageName,
+            fileName = fileSpec.name
+        ).bufferedWriter().use { writer ->
+            fileSpec.writeTo(writer)
+        }
     }
 }

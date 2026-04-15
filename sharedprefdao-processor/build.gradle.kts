@@ -1,18 +1,20 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.maven.publish)
+}
+
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=com.google.devtools.ksp.KspExperimental")
+    }
 }
 
 dependencies {
     implementation(project(":sharedprefdao-annotation"))
 
-    kapt(libs.autoservice)
-    implementation(libs.autoservice)
-
+    implementation(libs.ksp.api)
     implementation(libs.kotlinpoet)
-
-    implementation(kotlin("reflect"))
+    implementation(libs.kotlinpoet.ksp)
 }
 
 publishing {

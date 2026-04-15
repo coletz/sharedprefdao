@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.legacy.kapt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -53,5 +53,5 @@ dependencies {
 
     implementation(project(":sharedprefdao-editor"))
     implementation(project(":sharedprefdao-annotation"))
-    kapt(project(":sharedprefdao-processor"))
+    ksp(project(":sharedprefdao-processor"))
 }

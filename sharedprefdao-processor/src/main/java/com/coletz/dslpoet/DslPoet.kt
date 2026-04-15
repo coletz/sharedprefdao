@@ -1,8 +1,6 @@
 package com.coletz.dslpoet
 
 import com.squareup.kotlinpoet.*
-import javax.annotation.processing.Filer
-import javax.tools.StandardLocation
 
 // Create a standalone class
 fun file(pkg: String, name: String, f: FileSpec.Builder.() -> Unit = {})
@@ -49,7 +47,7 @@ inline fun <reified T> genFunction(name: String, f: FunSpec.Builder.() -> Unit =
 // Create a standalone function that returns a type specified by T
 inline fun genFunction(name: String, type: TypeName, f: FunSpec.Builder.() -> Unit = {}): FunSpec {
     return FunSpec.builder(name)
-            .returns(type.javaToKotlinType())
+            .returns(type)
             .also(f)
             .build()
 }
@@ -80,7 +78,7 @@ fun TypeSpec.Builder.voidFunction(name: String, f: FunSpec.Builder.() -> Unit = 
 
 // Create a property that returns a type specified by T inside a companion object or other typespec
 inline fun <reified T> TypeSpec.Builder.property(name: String, p: PropertySpec.Builder.() -> Unit = {})
-        = genProperty(name, T::class.java.asTypeName().javaToKotlinType(), p)
+        = genProperty(name, T::class.asTypeName(), p)
         .also { this.addProperty(it) }
 
 // Create a property inside a companion object or other typespec
@@ -90,7 +88,7 @@ fun TypeSpec.Builder.property(name: String, type: TypeName, p: PropertySpec.Buil
 
 // Create a standalone property
 inline fun genProperty(name: String, type: TypeName, p: PropertySpec.Builder.() -> Unit = {}): PropertySpec {
-    return PropertySpec.builder(name, type.javaToKotlinType())
+    return PropertySpec.builder(name, type)
             .also(p)
             .build()
 }
@@ -112,7 +110,7 @@ inline fun <reified T> PropertySpec.Builder.setter(g: FunSpec.Builder.() -> Unit
 
 fun PropertySpec.Builder.setter(type: TypeName, g: FunSpec.Builder.() -> Unit = {}) {
     val func = FunSpec.setterBuilder()
-            .addParameter("value", type.javaToKotlinType())
+            .addParameter("value", type)
             .also(g)
             .build()
     setter(func)
@@ -128,19 +126,3 @@ fun genCode(format: String, vararg args: Any)
         = CodeBlock.builder()
         .addStatement(format, *args)
         .build()
-
-
-
-// Write FileSpec to the specified Filer
-// Usually filer can be obtained from processingEnv.filer
-fun FileSpec.writeToFiler(filer: Filer): String {
-
-    val kotlinFileObject = filer.createResource(StandardLocation.SOURCE_OUTPUT, this.packageName, "${this.name}.kt")
-
-    val filePath = kotlinFileObject.openWriter().use {
-        writeTo(it)
-        kotlinFileObject.name
-    }
-
-    return filePath ?: throw Exception("Error while creating file ${this.name}.kt")
-}

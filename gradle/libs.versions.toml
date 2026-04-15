@@ -11,6 +11,7 @@ targetSdk = "37"
 # Languages & Build
 agp = "9.1.1"
 kotlin = "2.3.20"
+ksp = "2.3.6"
 jvmTarget = "21"
 
 # AndroidX
@@ -25,8 +26,8 @@ material = "1.13.0"
 coroutines = "1.10.2"
 kotlinpoet = "2.3.0"
 
-# Annotation Processing
-autoservice = "1.1.1"
+# Symbol Processing
+# KSP version must be compatible with Kotlin version
 
 [libraries]
 # AndroidX
@@ -42,14 +43,14 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 
 # Code Generation
 kotlinpoet = { group = "com.squareup", name = "kotlinpoet", version.ref = "kotlinpoet" }
+kotlinpoet-ksp = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
-# Annotation Processing
-autoservice = { group = "com.google.auto.service", name = "auto-service", version.ref = "autoservice" }
+# Symbol Processing
+ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-legacy-kapt = { id = "com.android.legacy-kapt", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 maven-publish = { id = "maven-publish" }
